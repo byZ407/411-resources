@@ -18,8 +18,19 @@ def repeat():
     input = request.args.get('input','Missing input') 
     response = make_response(
         {
-        "body": input,
-        "status": 200
+        'body': input,
+        'status': 200
+        }
+    )
+    return response
+
+@app.route('/health')
+@app.route('/healthcheck')
+def health():
+    response = make_response(
+        {
+        'body': 'OK',
+        'status': 200
         }
     )
     return response
