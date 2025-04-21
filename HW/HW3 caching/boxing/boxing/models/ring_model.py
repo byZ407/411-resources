@@ -132,7 +132,7 @@ class RingModel:
         """
         if not self.ring:
             logger.warning("Attempted to clear an empty ring.")
-            return
+            
         logger.info("Clearing the boxers from the ring.")
         self.ring.clear()
 
