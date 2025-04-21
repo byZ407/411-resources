@@ -51,6 +51,7 @@ class Boxers(db.Model):
         self.height = height
         self.reach = reach
         self.age = age
+        self.weight_class = self.get_weight_class(weight)
         
 
     @classmethod
