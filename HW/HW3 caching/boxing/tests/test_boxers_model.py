@@ -1,6 +1,7 @@
 import time
 
 import pytest
+from pytest_mock import MockerFixture
 
 from boxing.models.ring_model import RingModel
 from boxing.models.boxers_model import Boxers
