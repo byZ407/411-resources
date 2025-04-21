@@ -31,7 +31,32 @@ class RingModel:
             ttl_seconds (int): The time-to-live in seconds for the cached boxer objects.
 
         """
-        pass
+        self.ring: List[int] = []
+        self._ring_cache: dict[int, Ring] = {}
+        self._ttl: dict[int, float] = {}
+        self.ttl_seconds = int(os.getenv("TTL", 60))
+
+    def _get_ring_from_cache_or_db(self, ring_id: int) -> Ring:
+        now = time.time()
+
+        if ring_id in self._ring_cache and self._ttl.get(ring_id, 0) > now:
+            logger.debug(f"Ring ID {ring_id} retrieved from cache")
+            return self._ring_cache[ring_id]
+
+        try:
+            ring = Ring.get_ring_by_id(ring_id)
+            logger.info(f"Ring ID {ring_id} loaded from DB")
+        except ValueError as e:
+            logger.error(f"Ring ID {ring_id} not found in DB: {e}")
+            raise ValueError(f"Ring ID {ring_id} not found in database") from e
+
+        self._ring_cache[ring_id] = ring
+        self._ttl[ring_id] = now + self.ttl_seconds
+        return ring
+
+    def get_ring_by_id(self, ring_id: int) -> Ring:
+        logger.info(f"Retrieving ring with ID {ring_id}")
+        return self._get_ring_from_cache_or_db(ring_id)
 
     def fight(self) -> str:
         """Simulates a fight between two combatants.
@@ -112,6 +137,7 @@ class RingModel:
         """
         if len(self.ring) >= 2:
             logger.error(f"Attempted to add boxer ID {boxer_id} but the ring is full")
+            raise ValueError(f"Attempted to add boxer ID {boxer_id} but the ring is full")
 
         try:
             boxer = Boxers.get_boxer_by_id(boxer_id)
@@ -120,7 +146,7 @@ class RingModel:
             raise
 
         logger.info(f"Adding boxer '{boxer.name}' (ID {boxer_id}) to the ring")
-
+        self.ring.append(boxer.id)
         logger.info(f"Current boxers in the ring: {[Boxers.get_boxer_by_id(b).name for b in self.ring]}")
 
 
@@ -143,6 +169,7 @@ class RingModel:
                 logger.debug(f"Using cached boxer {boxer_id} (TTL valid).")
 
         logger.info(f"Retrieved {len(boxers)} boxers from the ring.")
+
 
     def get_fighting_skill(self, boxer: Boxers) -> float:
         """Calculates the fighting skill for a boxer based on arbitrary rules.
@@ -168,8 +195,11 @@ class RingModel:
         logger.info(f"Fighting skill for {boxer.name}: {skill:.3f}")
         return skill
 
+    
     def clear_cache(self):
         """Clears the local TTL cache of boxer objects.
 
         """
         logger.info("Clearing local boxer cache in RingModel.")
+        self._ring_cache.clear()
+        self._ttl.clear()
