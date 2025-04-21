@@ -132,7 +132,7 @@ class RingModel:
         """
         if not self.ring:
             logger.warning("Attempted to clear an empty ring.")
-            return
+            
         logger.info("Clearing the boxers from the ring.")
         self.ring.clear()
 
@@ -174,7 +174,11 @@ class RingModel:
             List[Boxers]: A list of Boxers dataclass instances representing the boxers in the ring.
 
         """
-        self.check_if_empty()
+        try:
+            self.check_if_empty()
+        except ValueError:
+            logger.error("Retrieving boxers from an empty ring.")
+            
         logger.info("Retrieving all boxers in the ring")
         return [self._get_boxer_from_cache_or_db(boxer_id) for boxer_id in self.ring]
 
