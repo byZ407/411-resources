@@ -100,10 +100,19 @@ class Boxers(db.Model):
         """
         logger.info(f"Creating boxer: {name}, {weight=} {height=} {reach=} {age=}")
         try:
+            if weight < 125:
+                raise ValueError(f"Invalid weight: {weight}. Must be at least 125.")
+            if height <= 0:
+                raise ValueError(f"Invalid height: {height}. Must be greater than 0.")
+            if reach <= 0:
+                raise ValueError(f"Invalid reach: {reach}. Must be greater than 0.")
+            if not (18 <= age <= 40):
+                raise ValueError(f"Invalid age: {age}. Must be between 18 and 40.")
+            
             boxer = Boxers(name, weight, height, reach, age)
         except ValueError as e:
             logger.warning(f"Boxer creation failed: {e}")
-            raise
+            raise e
         
         try:
             existing = Boxers.query.filter_by(name=name.strip()).first()
@@ -114,14 +123,14 @@ class Boxers(db.Model):
             db.session.add(boxer)
             db.session.commit()
             logger.info(f"Boxer created successfully: {name}")
-        except IntegrityError:
+        except IntegrityError as e:
             logger.error(f"Boxer with name '{name}' already exists.")
             db.session.rollback()
-            raise
+            raise e
         except SQLAlchemyError as e:
             db.session.rollback()
             logger.error(f"Database error during creation: {e}")
-            raise
+            raise e
 
     @classmethod
     def get_boxer_by_id(cls, boxer_id: int) -> "Boxers":
@@ -148,7 +157,7 @@ class Boxers(db.Model):
             return boxer
         except SQLAlchemyError as e:
             logger.error(f"Database error while retrieving boxer by ID {boxer_id}: {e}")
-            raise
+            raise e
 
     @classmethod
     def get_boxer_by_name(cls, name: str) -> "Boxers":
@@ -175,7 +184,7 @@ class Boxers(db.Model):
             return boxer
         except SQLAlchemyError as e:
             logger.error(f"Database error while retrieving boxer by name '{name}': {e}")
-            raise
+            raise e
 
     @classmethod
     def delete(cls, boxer_id: int) -> None:
