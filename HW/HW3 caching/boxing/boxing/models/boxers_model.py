@@ -20,7 +20,7 @@ class Boxers(db.Model):
     manage boxer data, run simulations, and track fight outcomes.
 
     """
-    __tablename__ = "Boxers"
+    __tablename__ = "boxers"
 
     id = db.Column(db.Integer, primary_keys=True)
     name = db.Column(db.String, nullable=False)
