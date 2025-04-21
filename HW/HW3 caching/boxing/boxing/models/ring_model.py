@@ -32,31 +32,10 @@ class RingModel:
 
         """
         self.ring: List[int] = []
-        self._ring_cache: dict[int, Ring] = {}
+        self._boxer_cache: dict[int, Boxers] = {}
         self._ttl: dict[int, float] = {}
         self.ttl_seconds = int(os.getenv("TTL", 60))
 
-    def _get_ring_from_cache_or_db(self, ring_id: int) -> Ring:
-        now = time.time()
-
-        if ring_id in self._ring_cache and self._ttl.get(ring_id, 0) > now:
-            logger.debug(f"Ring ID {ring_id} retrieved from cache")
-            return self._ring_cache[ring_id]
-
-        try:
-            ring = Ring.get_ring_by_id(ring_id)
-            logger.info(f"Ring ID {ring_id} loaded from DB")
-        except ValueError as e:
-            logger.error(f"Ring ID {ring_id} not found in DB: {e}")
-            raise ValueError(f"Ring ID {ring_id} not found in database") from e
-
-        self._ring_cache[ring_id] = ring
-        self._ttl[ring_id] = now + self.ttl_seconds
-        return ring
-
-    def get_ring_by_id(self, ring_id: int) -> Ring:
-        logger.info(f"Retrieving ring with ID {ring_id}")
-        return self._get_ring_from_cache_or_db(ring_id)
 
     def fight(self) -> str:
         """Simulates a fight between two combatants.
@@ -112,6 +91,7 @@ class RingModel:
         self.clear_ring()
 
         return winner.name
+
 
     def clear_ring(self):
         """Clears the list of boxers.
@@ -201,5 +181,5 @@ class RingModel:
 
         """
         logger.info("Clearing local boxer cache in RingModel.")
-        self._ring_cache.clear()
+        self._boxer_cache.clear()
         self._ttl.clear()
