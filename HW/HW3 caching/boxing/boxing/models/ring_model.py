@@ -37,6 +37,39 @@ class RingModel:
         self.ttl_seconds = int(os.getenv("TTL", 60))
 
 
+    def _get_boxer_from_cache_or_db(self, boxer_id: int) -> Boxers:
+        """Retrieves a boxer by ID, using the internal cache if possible.
+
+        This method checks whether a cached version of the boxer is available
+        and still valid. If not, it queries the database, updates the cache, and returns the boxer.
+
+        Args:
+            boxer_id (int): The unique ID of the boxer to retrieve.
+
+        Returns:
+            Boxers: The boxer object corresponding to the given ID.
+
+        Raises:
+            ValueError: If the boxer cannot be found in the database.
+        """
+        now = time.time()
+
+        if boxer_id in self._boxer_cache and self._ttl.get(boxer_id, 0) > now:
+            logger.debug(f"Boxer ID {boxer_id} retrieved from cache")
+            return self._boxer_cache[boxer_id]
+
+        try:
+            boxer = Boxers.get_boxer_by_id(boxer_id)
+            logger.info(f"Boxer ID {boxer_id} loaded from DB")
+        except ValueError as e:
+            logger.error(f"Boxer ID {boxer_id} not found in DB: {e}")
+            raise ValueError(f"Boxer ID {boxer_id} not found in database") from e
+
+        self._boxer_cache[boxer_id] = boxer
+        self._ttl[boxer_id] = now + self.ttl_seconds
+        return boxer
+
+
     def fight(self) -> str:
         """Simulates a fight between two combatants.
 
@@ -137,18 +170,9 @@ class RingModel:
             List[Boxers]: A list of Boxers dataclass instances representing the boxers in the ring.
 
         """
-        if not self.ring:
-            logger.warning("Retrieving boxers from an empty ring.")
-        else:
-            logger.info(f"Retrieving {len(self.ring)} boxers from the ring.")
-
-        for boxer_id in self.ring:
-            if expired:
-                logger.info(f"TTL expired or missing for boxer {boxer_id}. Refreshing from DB.")
-            else:
-                logger.debug(f"Using cached boxer {boxer_id} (TTL valid).")
-
-        logger.info(f"Retrieved {len(boxers)} boxers from the ring.")
+        self.check_if_empty()
+        logger.info("Retrieving all boxers in the ring")
+        return [self._get_boxer_from_cache_or_db(boxer_id) for boxer_id in self.ring]
 
 
     def get_fighting_skill(self, boxer: Boxers) -> float:
@@ -183,3 +207,15 @@ class RingModel:
         logger.info("Clearing local boxer cache in RingModel.")
         self._boxer_cache.clear()
         self._ttl.clear()
+
+
+
+    def check_if_empty(self) -> None:
+        """Checks if the ring is empty and raises a ValueError if it is.
+
+        Raises:
+            ValueError: If the ring is empty.
+        """
+        if not self.ring:
+            logger.error("Ring is empty")
+            raise ValueError("Ring is empty")
